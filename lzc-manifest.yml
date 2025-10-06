@@ -1,0 +1,107 @@
+# app 的唯一 id,上架到商店需要保证不要冲突,尽量使用开发者自己的域名作为后缀.
+package: cloud.lazycat.app.liu.appsmith
+# app 的版本
+version: 1.87.0
+
+name: Appsmith
+keywords: appsmith,low-code,app-builder,no-code,workflow,automation
+description: Appsmith is a low-code platform to build, deploy, and manage internal tools.
+
+# 软件名称,会显示在启动器之类的地方
+locales:
+  zh:
+    name: Appsmith
+    description: |
+      ## Appsmith - 开源低代码平台
+
+      **官方网站:** https://www.appsmith.com/
+      **仓库地址:** https://github.com/lazycatapps/appsmith.git
+
+      Appsmith 是一个开源低代码平台,用于快速构建、部署和管理内部工具。通过拖放式界面和强大的集成能力,开发者可以快速创建定制化的应用程序。
+
+      ## 主要功能
+
+      - 🎨 可视化拖放界面设计器
+      - 🔌 支持多种数据源集成 (PostgreSQL, MongoDB, REST API 等)
+      - 📊 丰富的 UI 组件库
+      - 🚀 一键部署和发布
+      - 👥 协作和版本控制
+      - 🔒 企业级安全和权限管理
+
+  en:
+    name: Appsmith
+    description: |
+      ## Appsmith - Open Source Low-Code Platform
+
+      **Official Website:** https://www.appsmith.com/
+      **Repository:** https://github.com/lazycatapps/appsmith.git
+
+      Appsmith is an open-source low-code platform for building, deploying, and managing internal tools. With a drag-and-drop interface and powerful integration capabilities, developers can quickly create custom applications.
+
+      ## Key Features
+
+      - 🎨 Visual drag-and-drop interface designer
+      - 🔌 Multiple data source integrations (PostgreSQL, MongoDB, REST API, etc.)
+      - 📊 Rich UI component library
+      - 🚀 One-click deployment and publishing
+      - 👥 Collaboration and version control
+      - 🔒 Enterprise-grade security and permissions
+
+# 软件本身的 license
+license: https://github.com/appsmithorg/appsmith?tab=Apache-2.0-1-ov-file
+
+# 软件的主页,会在商店等地方体现
+homepage: https://github.com/appsmithorg/appsmith
+
+# lpk 的作者,会在商店等地方体现
+author: liu
+
+# application 作为一个特殊的 container 运行，对应的 service 名称为固定的`app`， 其他 service 可以通过此名称与 app 进行通讯
+application:
+  #是否存在后台任务， 若存在则系统不会对此 app 进行主动休眠等操作
+  background_task: true
+
+  # 期望的 app 域名，如果系统中已经有对应域名则会提示用户选择其他域名。 最终 app 分配到的域名以/lzcapp/run/app.subdomain 为准
+  subdomain: appsmith
+
+  routes:
+    - /=http://appsmith:80/
+
+  # 页面本身是有鉴权的，所以可以不需要 lazycat 的鉴权。
+  public_path:
+    - /                         # 无需登录即可访问
+
+  # 健康检测配置
+  health_check:
+    test_url: http://appsmith:80
+    start_period: 120s
+
+  depends_on:
+    - appsmith
+
+  # 是否启用多实例
+  multi_instance: false
+
+services:
+  appsmith:
+    # lzc-cli appstore copy-image index.docker.io/appsmith/appsmith-ee:v1.87
+    image: registry.lazycat.cloud/liu/appsmith/appsmith-ee:66c9907b4c55b5bd
+    environment:
+      - APPSMITH_ENCRYPTION_PASSWORD=changeme_please_use_secure_random_value
+      - APPSMITH_ENCRYPTION_SALT=changeme_please_use_secure_random_value
+      - APPSMITH_SUPERVISOR_PASSWORD=changeme_supervisor_password
+      - APPSMITH_DISABLE_TELEMETRY=true
+      - APPSMITH_SEGMENT_CE_KEY=
+    binds:
+      - /lzcapp/var/stacks:/appsmith-stacks
+    setup_script: |
+      #!/bin/sh
+      # 替换系统的 update-ca-certificates 命令为空操作
+      # 因为懒猫微服已挂载只读的 /etc/ssl/certs/ca-certificates.crt
+      mv /usr/sbin/update-ca-certificates /usr/sbin/update-ca-certificates.orig
+      cat > /usr/sbin/update-ca-certificates << 'EOF'
+      #!/bin/sh
+      echo "Skip update-ca-certificates (CA certificates mounted read-only by lzc-os)"
+      exit 0
+      EOF
+      chmod +x /usr/sbin/update-ca-certificates
